@@ -1,90 +1,143 @@
 # cteam
 
-3-pane multi-agent dev team on tmux + Claude Code: **PM** (lead) + **Slot1/Slot2** (write slots). Reviews (code + design) are PM-spawned subagents, never panes. Protocol lives in `roles/`; discipline skills in `skills/`.
+3-pane multi-agent dev team on tmux + Claude Code.
 
 ```
 ┌──────────┬──────────┬──────────┐
 │    PM    │  Slot1   │  Slot2   │
+│  (lead)  │ (writer) │ (writer) │
 └──────────┴──────────┴──────────┘
 ```
 
-## Layout
+- **PM** talks to the human, owns Issues/TODO, dispatches work, merges.
+- **Slot1/Slot2** implement one Issue each, in isolated git worktrees.
+- **Reviews** (code + design) are PM-spawned subagents — never panes.
 
-| Path | What |
-|---|---|
-| `bin/cteam` | Launcher: tmux session + 3 Claude panes + cron watcher |
-| `bin/cteam-send` | Pane messaging (Enter-retry safe) — the ONLY sanctioned channel |
-| `bin/cteam-andon` | Emergency stop broadcast (Escape-first) |
-| `bin/cteam-rebase` | Slot branch refresh onto origin/develop (rebase, not merge) |
-| `bin/cteam-reset-slot` | Kill-and-replace a slot's context between issues |
-| `bin/cteam-cron` | Background watcher (vault Raw/ accumulation → PM) |
-| `bin/cteam-end` | Stop session + cron |
-| `bin/cteam-doctor` | Dependency/wiring check — read-only, installs nothing |
-| `bin/cteam-init` | Per-project setup: GitHub labels, vault skeleton, worktrees |
-| `roles/` | Protocol: `shared.md` (all), `pm.md`, `slot.md`, `design.md` (domain:ui) |
-| `skills/` | 11 discipline skills, symlinked flat into `~/.claude/skills/` |
-| `agents/` | Reviewer subagent definitions (code / typescript / security) |
-| `commands/` | `/save`, `/organize` (vault workflow), symlinked into `~/.claude/commands/` |
-| `rules/vault.md` | Vault conventions, symlinked to `~/.claude/rules/cteam/obsidian/vault.md` (auto-loaded every session) |
-| `settings-fragment.json` | Required plugins + optional lint hooks, merged by install.sh |
+The full protocol lives in [`roles/`](roles/); the discipline skills in [`skills/`](skills/).
 
-`$CTEAM_HOME` (this repo root) is exported into every pane; all path references route through it.
+---
 
-## Install
+## Quick start
+
+### 1. Install (once per machine)
 
 ```bash
 git clone git@github.com:ytakehir/cteam.git ~/work/cteam
 ~/work/cteam/install.sh
+source ~/.zshrc
 ```
 
-Idempotent. It symlinks skills/agents/commands/rules into `~/.claude/`, adds a PATH block to `~/.zshrc`, adds a tmux `session-closed` hook that reaps the cron watcher, points the cteam section of `~/.claude/CLAUDE.md` at this repo, merges `settings-fragment.json` into `~/.claude/settings.json` (plugins always; the two lint hooks only if the ECC-derived `~/.claude/scripts` lib exists), then runs `cteam-doctor`.
+Idempotent — safe to re-run anytime. Ends with a `cteam-doctor` report; fix any ✗ it shows.
 
-The protocol also leans on the `/goal` and `/loop` slash commands (PM dispatches slots under them) — both are Claude Code built-ins, nothing to install.
+### 2. Verify (first install only)
 
-**First install — verify symlinked skills load:** open a NEW Claude Code session and confirm the 11 cteam skills (andon, bug-spike, cteam-code-review, create-issue, pre-pr, typescript-safety, ui-implement, figma-preflight, figma-create, figma-review, fable-style) appear in the skills list. `~/.claude/skills/` is scanned one level deep only; if symlinks are not followed on your setup, fall back to:
+| Check | How |
+|---|---|
+| Skills load | New Claude session → 11 cteam skills in the list |
+| Figma OAuth | Ask Claude to call `mcp__figma__whoami` |
+| Live launch | `cteam <test-project>` → 3 panes declare their roles |
 
-```bash
-~/work/cteam/install.sh --copy   # copies instead — re-run after every skill edit
-```
-
-After everything verifies, retire the legacy `~/.config/tmux/cteam` assets:
+Then retire the pre-repo assets:
 
 ```bash
 ~/work/cteam/install.sh --retire
 ```
 
-### Manual steps install.sh cannot do
-
-- **Plugins**: if `cteam-doctor` flags a plugin, install it via `/plugin` inside Claude Code (context7, figma, superpowers, typescript-lsp, swift-lsp — all `@claude-plugins-official`).
-- **Figma MCP OAuth**: in a Claude session ask it to call `mcp__figma__whoami`; re-auth via `/mcp` if it fails.
-- **gh auth**: `gh auth login` (doctor checks status).
-- **Obsidian** (optional but recommended): `brew install --cask obsidian` + its CLI, and the `obsidian-cli` / `obsidian-markdown` / `obsidian-bases` skills from the `kepano/obsidian-skills` marketplace. Vault writes are plain markdown files and work without Obsidian; these only power the richer vault skills. Deliberately NOT vendored here (they are general-purpose, not cteam's).
-- **git / tmux / node / python3**: install via Homebrew if missing.
-
-## Per-project setup
+### 3. Use
 
 ```bash
 cd ~/work/myproject
-cteam myproject                 # first run auto-executes cteam-init + cteam-doctor, then launches
-cteam-end myproject             # stop
+cteam myproject          # launch (first run auto-executes init + doctor)
+cteam-end myproject      # stop
 ```
 
-**First launch of a project runs `cteam-init` + `cteam-doctor` automatically** (trigger: no `~/.cteam_sessions/<project>.toml` yet). Doctor failures abort the launch; override once with `CTEAM_SKIP_DOCTOR=1 cteam myproject`. Both tools are idempotent and can also be run standalone:
+First launch of a project runs `cteam-init` + `cteam-doctor` automatically. Doctor failures abort the launch — override once with `CTEAM_SKIP_DOCTOR=1 cteam myproject`.
 
-```bash
-cteam-init myproject            # labels + vault + worktrees (needs a develop branch)
-cteam-doctor owner/myproject    # verify, incl. label scheme
+---
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `cteam <project> [suffix] [dir]` | Launch (or re-attach). `suffix=today` → dated session |
+| `cteam-end <project> [date]` | Kill session + cron watcher |
+| `cteam-doctor [owner/repo]` | Read-only health check — installs nothing |
+| `cteam-init <project> [--repo o/r]` | Labels + vault skeleton + w1/w2 worktrees |
+| `cteam-send <target> <msg>` | Pane messaging (Enter-retry safe) — the only sanctioned channel |
+| `cteam-andon --reason "..."` | Emergency stop, all panes (Escape-first) |
+| `cteam-rebase` | Slot: rebase current branch onto origin/develop |
+| `cteam-reset-slot <session> <slotN>` | PM: fresh context for a slot between issues |
+
+`cteam-cron` is internal (launched by `cteam`, watches vault Raw/ accumulation).
+
+---
+
+## What install.sh wires up
+
+| Source (repo) | Destination | Method |
+|---|---|---|
+| `skills/` (11) | `~/.claude/skills/` | symlink |
+| `agents/` (3 reviewers) | `~/.claude/agents/` | symlink |
+| `commands/` (`/save`, `/organize`) | `~/.claude/commands/` | symlink |
+| `rules/vault.md` | `~/.claude/rules/cteam/obsidian/vault.md` | symlink |
+| PATH block | `~/.zshrc` | marked block |
+| cron-kill hook | tmux conf (`session-closed`) | marked block |
+| cteam pointer | `~/.claude/CLAUDE.md` | sed migrate / append |
+| `settings-fragment.json` | `~/.claude/settings.json` | JSON merge |
+
+Notes:
+
+- Anything replaced is backed up to `~/.claude/backups/cteam-install-<timestamp>/`.
+- Settings merge: plugins always; the two lint hooks only if the ECC-derived `~/.claude/scripts` lib exists.
+- `--copy` copies instead of symlinking (only needed if your setup doesn't scan symlinked skills — verified working on macOS). Copy mode requires re-running install.sh after every skill edit.
+- `--retire` moves the legacy `~/.config/tmux/cteam` assets + old zshrc lines to a backup. Run only after the verify step.
+
+### Manual steps (install.sh can't do these)
+
+| What | How | Doctor |
+|---|---|---|
+| Plugins (context7, figma, superpowers, typescript-lsp, swift-lsp) | `/plugin` in Claude Code | ✗ if missing |
+| Figma MCP OAuth | `mcp__figma__whoami` in a session; `/mcp` to re-auth | ⚠ always (not shell-checkable) |
+| GitHub auth | `gh auth login` | ✗ if missing |
+| Obsidian app + CLI, `obsidian-*` skills | `brew install --cask obsidian`; skills from `kepano/obsidian-skills` | ⚠ if missing |
+
+Obsidian is optional: vault writes are plain markdown and work without it. The `/goal` and `/loop` slash commands the PM uses for dispatch are Claude Code built-ins — nothing to install.
+
+---
+
+## Repo layout
+
+```
+bin/        launcher + 8 tools (table above)
+roles/      protocol: shared.md (all) · pm.md · slot.md · design.md (domain:ui)
+skills/     11 discipline skills → symlinked flat into ~/.claude/skills/
+agents/     reviewer subagents: code-reviewer · typescript-reviewer · security-reviewer
+commands/   /save · /organize (vault workflow)
+rules/      vault.md — vault conventions, auto-loaded every session
+install.sh  idempotent installer (--copy · --retire)
+settings-fragment.json  required plugins + optional lint hooks
 ```
 
-`cteam-init` creates the label scheme from `roles/shared.md` (priority / domain / type / status / size), the vault skeleton `~/vault/Work/<project>/{logs,decisions,architecture,notes,Raw}`, and worktrees `../<project>-w1`, `../<project>-w2` off `develop`.
+**Path model**: everything routes through `$CTEAM_HOME` (this repo root). The launcher derives it from its own location and exports it — plus `$CTEAM_HOME/bin` on PATH — into every pane. No hardcoded paths anywhere.
 
-## Editing the protocol
+**Editing**: skills/agents/commands/rules are symlinked and roles are read from the repo, so edits are live for new sessions — no re-install. Commit like any repo.
 
-Skills and agents are symlinked, roles are read from the repo — edits here are live for new sessions/panes; no re-install needed (unless you used `--copy`). Commit changes like any repo.
+---
 
-## Design decisions (settled — do not re-litigate casually)
+## Per-project setup (what cteam-init creates)
 
-- **No plugin packaging**: tmux-layer scripts can't ship in a Claude plugin, the plugin cache copy breaks the edit cycle, and plugin namespacing breaks skill cross-references. Add a `marketplace.json` later if it ever goes public.
-- **No agent-teams migration** while the feature is experimental and unsupported in the desktop app. Revisit when it graduates or gains desktop support.
-- **All panes on opus** (Fable-period trial) and the strong-worded prompts stay as-is.
-- **State triple-tracking** (status.toml / TODO board / GitHub labels) is accepted.
+- **Labels** (upserted via `gh label create --force`): `priority:{high,medium,low}` · `domain:{frontend,backend,infra,db,auth,ui}` · `type:{feature,bug,refactor,test,docs,performance,research}` · `status:{todo,in-progress,review-waiting,design-review,done,blocked}` · `size:{s,m,l}`
+- **Vault**: `~/vault/Work/<project>/{logs,decisions,architecture,notes,Raw}`
+- **Worktrees**: `../<project>-w1`, `../<project>-w2` off `develop` (skipped with a notice if no develop branch yet)
+
+---
+
+## Design decisions (settled — don't re-litigate casually)
+
+| Decision | Why |
+|---|---|
+| No plugin packaging | tmux-layer scripts can't ship in a plugin; cache copies break the edit cycle; namespacing breaks skill cross-refs. Add `marketplace.json` later if it ever goes public |
+| No agent-teams migration | Experimental + no desktop app support. Revisit when it graduates |
+| Obsidian skills not vendored | General-purpose (kepano marketplace), not cteam's — doctor checks presence instead |
+| All panes on opus | Fable-period trial |
+| State triple-tracking | status.toml / TODO board / GitHub labels — accepted |
