@@ -1,0 +1,42 @@
+#!/bin/bash
+# cteam-cron <session> <dir> <vault_proj>
+# Background watcher (3-pane model): Raw/ accumulation → notify PM.
+# Worker/SM/Designer nudges are gone — PM orchestrates directly and runs its
+# own Monitor for slot pane-stalls and PR/issue state.
+# Launched by cteam, runs until tmux session dies.
+
+SESSION=$1
+DIR=$2
+VAULT_PROJ=$3
+
+RAW_THRESHOLD=${CTEAM_RAW_THRESHOLD:-5}
+RAW_COOLDOWN=${CTEAM_RAW_COOLDOWN:-3600}    # 1 hour
+
+# Pane layout: 1=PM 2=Slot1 3=Slot2
+PANE_PM=1
+
+while true; do
+  # ── Wait ~15 min (90 × 10s), exit if session dies ───────────
+  for i in $(seq 90 -1 1); do
+    if ! tmux has-session -t "$SESSION" 2>/dev/null; then exit 0; fi
+    sleep 10
+  done
+  if ! tmux has-session -t "$SESSION" 2>/dev/null; then exit 0; fi
+
+  NOW=$(date +%s)
+
+  # ── Raw/ accumulation watch → notify PM ────────────────────
+  if [ -d "$VAULT_PROJ/Raw" ]; then
+    RAW_COUNT=$(find "$VAULT_PROJ/Raw" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$RAW_COUNT" -ge "$RAW_THRESHOLD" ]; then
+      NOTIFY_FILE="/tmp/cteam_${SESSION}_raw_notify"
+      LAST=$(cat "$NOTIFY_FILE" 2>/dev/null || echo 0)
+      if [ $((NOW - LAST)) -ge "$RAW_COOLDOWN" ]; then
+        tmux send-keys -t "$SESSION:1.$PANE_PM" -l "[CRON] Vault Raw/ has $RAW_COUNT pending notes. Schedule /organize when convenient."
+        sleep 0.3
+        tmux send-keys -t "$SESSION:1.$PANE_PM" Enter
+        echo "$NOW" > "$NOTIFY_FILE"
+      fi
+    fi
+  fi
+done

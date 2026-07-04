@@ -1,0 +1,165 @@
+#!/bin/bash
+# cteam <project> [session-suffix] [directory]
+#
+#   cteam fnky                       # session = fnky (re-attach if exists)
+#   cteam fnky today                 # session = fnky-20260515 (today's date)
+#   cteam fnky 20260515              # session = fnky-20260515 (explicit date)
+#   cteam fnky 20260515 ~/work/fnky  # explicit dir
+#
+# Migration:
+#   Each date-suffixed run gets fresh tmux + fresh Claude conversations.
+#   Project state (worktrees, status.toml, vault) persists across migrations.
+#
+# Layout:
+#   ┌──────────┬──────────┬──────────┐
+#   │          │          │          │
+#   │    PM    │  Slot1   │  Slot2   │
+#   │          │          │          │
+#   └──────────┴──────────┴──────────┘
+#   Simple vertical 3-split (equal columns).
+#   Reviews (code + design) are PM-spawned subagents, not panes.
+
+set -e
+
+# ── Repo root (resolves symlinked invocation too) ─────────────
+SELF="$0"
+while [ -L "$SELF" ]; do SELF="$(readlink "$SELF")"; done
+CTEAM_HOME="$(cd "$(dirname "$SELF")/.." && pwd)"
+
+PROJECT=${1:?"Usage: cteam <project> [session-suffix] [directory]"}
+SUFFIX=${2:-""}
+DIR=${3:-$(pwd)}
+
+# ── "today" expands to YYYYMMDD ───────────────────────────────
+if [ "$SUFFIX" = "today" ]; then
+  SUFFIX=$(date +%Y%m%d)
+fi
+
+if [ -n "$SUFFIX" ]; then
+  SESSION="$PROJECT-$SUFFIX"
+else
+  SESSION="$PROJECT"
+fi
+
+# ── Vault paths ───────────────────────────────────────────────
+VAULT="${CTEAM_VAULT_ROOT:-$HOME/vault}"
+VAULT_PROJ="$VAULT/Work/$PROJECT"
+
+mkdir -p "$VAULT_PROJ"/{logs,decisions,architecture,notes,Raw}
+
+echo "Project:  $PROJECT"
+echo "Session:  $SESSION"
+echo "Dir:      $DIR"
+echo "Vault:    $VAULT_PROJ"
+echo "Home:     $CTEAM_HOME"
+
+# ── Attach if already running ─────────────────────────────────
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "Existing tmux session found, attaching..."
+  tmux attach -t "$SESSION"
+  exit 0
+fi
+
+# ── Create tmux session + 3-pane layout (equal vertical columns)
+# Pane assignment:  1 = PM (lead)  |  2 = Slot1  |  3 = Slot2
+tmux new-session -d -s "$SESSION" -c "$DIR" -x "$(tput cols)" -y "$(tput lines)"
+
+tmux split-window -h -t "$SESSION:1.1" -c "$DIR"
+tmux split-window -h -t "$SESSION:1.2" -c "$DIR"
+tmux select-layout -t "$SESSION:1" even-horizontal
+
+# ── Cron watcher ──────────────────────────────────────────────
+pkill -9 -f "cteam-cron $SESSION" 2>/dev/null || true
+sleep 1
+nohup "$CTEAM_HOME/bin/cteam-cron" "$SESSION" "$DIR" "$VAULT_PROJ" \
+  > "/tmp/cteam_cron_$SESSION.log" 2>&1 &
+CRON_PID=$!
+echo "$CRON_PID" > "/tmp/cteam_cron_$SESSION.pid"
+echo "Cron started: PID $CRON_PID"
+
+# ── Project metadata ──────────────────────────────────────────
+SESSIONS_DIR="$HOME/.cteam_sessions"
+mkdir -p "$SESSIONS_DIR"
+PROJECT_FILE="$SESSIONS_DIR/$PROJECT.toml"
+
+PREV_SESSION=""
+if [ -f "$PROJECT_FILE" ]; then
+  PREV_SESSION=$(grep "^latest_session" "$PROJECT_FILE" | cut -d'"' -f2 || echo "")
+fi
+
+cat > "$PROJECT_FILE" << EOF
+project = "$PROJECT"
+dir = "$DIR"
+latest_session = "$SESSION"
+previous_session = "$PREV_SESSION"
+started_at = "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+EOF
+
+# ── Prompt temp files ─────────────────────────────────────────
+PROMPT_DIR="/tmp/cteam_prompts_$$"
+mkdir -p "$PROMPT_DIR"
+(sleep 30 && rm -rf "$PROMPT_DIR") &
+
+# ── PM: full vault read (human interface needs all context) ───
+cat > "$PROMPT_DIR/pm.txt" << PMEOF
+You are the PM. Project: $PROJECT.
+
+EXECUTE THESE STEPS IN ORDER BEFORE ANY OTHER ACTION. DO NOT SKIP. DO NOT GREET THE HUMAN UNTIL STEP 7 IS DONE.
+
+1. Run: ls -lt \$CTEAM_VAULT/logs/ 2>/dev/null | head -5
+2. If logs exist: cat the most recent file. If empty: this is a new project, proceed to step 3.
+3. Run: ls \$CTEAM_VAULT/decisions/ 2>/dev/null
+4. Read the 5 most recent decision files in full (ls -t | head -5); note the rest by filename and read on demand. Decisions are AUTHORITATIVE. Respect them unless explicitly told to revisit.
+5. Run: ls \$CTEAM_VAULT/architecture/ 2>/dev/null && cat \$CTEAM_VAULT/architecture/*.md 2>/dev/null
+6. Read $CTEAM_HOME/roles/shared.md AND $CTEAM_HOME/roles/pm.md for your operational protocol. Do NOT read slot.md.
+7. State in chat: Vault loaded. Last log: [date or none]. Decisions: [count]. Architecture: [count]. Ready.
+8. Greet the human and ask for project context.
+
+Previous session: ${PREV_SESSION:-none}.
+
+DURING SESSION:
+- You are the LEAD: own the TODO board, dispatch issues to Slot1/Slot2, spawn review subagents (code + design), make merge decisions.
+- Start a persistent Monitor for slot pane-stalls + PR/issue state.
+- Reviews are subagents (Agent tool), never panes. Verify a PR exists before accepting any DONE.
+- Save decisions to \$CTEAM_VAULT/decisions/YYYY-MM-DD-[topic].md; write session log to \$CTEAM_VAULT/logs/YYYY-MM-DD.md at end.
+PMEOF
+
+# ── Slots: filenames only (read relevant on task assignment) ──
+for N in 1 2; do
+  cat > "$PROMPT_DIR/slot${N}.txt" << WEOF
+You are Slot $N. Project: $PROJECT.
+
+EXECUTE THESE STEPS IN ORDER BEFORE WAITING FOR PM:
+
+1. Run: ls \$CTEAM_VAULT/decisions/ 2>/dev/null
+   (List filenames ONLY. Read relevant files when you receive a task.)
+2. Read $CTEAM_HOME/roles/shared.md AND $CTEAM_HOME/roles/slot.md for your operational protocol. Do NOT read pm.md.
+3. State in chat: Slot $N ready. Decisions available: [count].
+4. Wait for PM dispatch (Issue URL + worktree).
+
+WHEN DISPATCHED A TASK:
+- Open a per-issue TODO (TaskCreate/TodoWrite) incl. self-review (pre-pr) + screenshot (domain:ui) items.
+- Read vault decisions relevant to the task; for domain:ui read $CTEAM_HOME/roles/design.md and \$CTEAM_VAULT/architecture/design-system-rules.md.
+- domain:ui: invoke ui-implement; target the Issue's exact Figma node-id; copy text verbatim; icons from exports. Undefined element → BLOCKED to PM (do not invent).
+- Run pre-pr self-review before opening the PR; attach the screenshot pair for domain:ui.
+- Update status.toml, then report to PM. All vault writes in English.
+
+DO NOT skip steps 1-4.
+WEOF
+done
+
+# ── Start Claude in each pane ─────────────────────────────────
+start_claude() {
+  local pane=$1 role=$2 model=$3 mode=$4 prompt_file=$5
+  local cid="$role-$SESSION"
+  local cmd="cd \"$DIR\" && export CTEAM_ROLE=$role && export SESSION=\"$SESSION\" && export CTEAM_VAULT=\"$VAULT_PROJ\" && export CTEAM_HOME=\"$CTEAM_HOME\" && export PATH=\"$CTEAM_HOME/bin:\$PATH\" && claude -n \"$cid\" \"\$(cat $prompt_file)\" --model $model --enable-auto-mode --permission-mode $mode"
+  tmux send-keys -t "$SESSION:1.$pane" "$cmd" Enter
+}
+
+# All panes on opus (trial). Revisit if usage burns too fast.
+start_claude 1 pm    opus auto "$PROMPT_DIR/pm.txt"
+start_claude 2 slot1 opus auto "$PROMPT_DIR/slot1.txt"
+start_claude 3 slot2 opus auto "$PROMPT_DIR/slot2.txt"
+
+tmux select-pane -t "$SESSION:1.1"
+tmux attach -t "$SESSION"

@@ -1,0 +1,21 @@
+#!/bin/bash
+# cteam-rebase — refresh the current branch onto latest origin/develop.
+# Run by a SLOT inside its worktree before opening (or updating) a PR, so the
+# branch is never based on a stale develop. Rebase (not merge) keeps history
+# linear, which keeps Claude's reasoning about git log clean. Aborts on conflict.
+#
+# Usage:  cteam-rebase
+# Output: REBASE_OK <sha>            → up to date, safe to PR
+#         REBASE_CONFLICT            → resolve manually or report BLOCKED to PM
+
+set -e
+
+git fetch origin develop
+
+if git rebase origin/develop; then
+  echo "REBASE_OK $(git rev-parse --short origin/develop)"
+else
+  git rebase --abort 2>/dev/null || true
+  echo "REBASE_CONFLICT — resolve manually or report BLOCKED to PM" >&2
+  exit 1
+fi

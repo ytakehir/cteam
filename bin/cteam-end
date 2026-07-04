@@ -1,0 +1,40 @@
+#!/bin/bash
+# cteam-end <project> [date]
+#
+#   cteam-end fnky           # stop most recent fnky session
+#   cteam-end fnky today     # stop fnky-20260515
+#   cteam-end fnky 20260515  # stop specific session
+
+PROJECT=${1:?"Usage: cteam-end <project> [date]"}
+DATE=${2:-""}
+
+if [ "$DATE" = "today" ]; then
+  DATE=$(date +%Y%m%d)
+fi
+
+if [ -n "$DATE" ]; then
+  SESSION="$PROJECT-$DATE"
+else
+  PROJECT_FILE="$HOME/.cteam_sessions/$PROJECT.toml"
+  if [ ! -f "$PROJECT_FILE" ]; then
+    echo "Error: no session found for project '$PROJECT'" >&2
+    exit 1
+  fi
+  SESSION=$(grep "^latest_session" "$PROJECT_FILE" | cut -d'"' -f2)
+  if [ -z "$SESSION" ]; then
+    echo "Error: no latest_session in $PROJECT_FILE" >&2
+    exit 1
+  fi
+fi
+
+# Kill the cron watcher: PID file first (written by cteam.sh), pattern as fallback.
+# (The old pattern "cteam_cron_$SESSION" never matched the real process name.)
+PID_FILE="/tmp/cteam_cron_$SESSION.pid"
+if [ -f "$PID_FILE" ]; then
+  kill "$(cat "$PID_FILE")" 2>/dev/null || true
+  rm -f "$PID_FILE"
+fi
+pkill -f "cteam-cron $SESSION" 2>/dev/null || true
+tmux kill-session -t "$SESSION" 2>/dev/null || true
+
+echo "Stopped: $SESSION"

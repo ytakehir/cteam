@@ -1,0 +1,57 @@
+#!/bin/bash
+# cteam-andon --reason "..." [--by role]
+# Broadcasts an andon alert to all panes, stopping all work immediately.
+# Sends Escape first to interrupt a running turn, so the stop is actually
+# immediate instead of queuing in the input box until the turn ends.
+# PM receives a human-decision prompt.
+
+set -e
+
+REASON=""
+BY="${CTEAM_ROLE:-unknown}"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --reason) REASON="$2"; shift 2 ;;
+    --by)     BY="$2";     shift 2 ;;
+    *) echo "Usage: cteam-andon --reason \"...\" [--by role]" >&2; exit 1 ;;
+  esac
+done
+
+if [ -z "$REASON" ]; then
+  echo "Error: --reason is required" >&2
+  exit 1
+fi
+
+if [ -z "$SESSION" ]; then
+  echo "Error: SESSION env var is not set" >&2
+  exit 1
+fi
+
+# Pane layout: 1=PM 2=Slot1 3=Slot2
+PANE_PM=1
+ALL_PANES=(2 3)
+
+STOP_MSG="[ANDON] $REASON — raised by $BY. Stop current work immediately and wait for PM decision."
+PM_MSG="[ANDON] $REASON — raised by $BY. Human decision required."
+
+# Notify all non-PM panes
+for PANE in "${ALL_PANES[@]}"; do
+  if tmux has-session -t "$SESSION" 2>/dev/null; then
+    tmux send-keys -t "$SESSION:1.$PANE" Escape
+    sleep 0.3
+    tmux send-keys -t "$SESSION:1.$PANE" -l "$STOP_MSG"
+    sleep 0.1
+    tmux send-keys -t "$SESSION:1.$PANE" Enter
+    sleep 0.1
+  fi
+done
+
+# Notify PM separately
+tmux send-keys -t "$SESSION:1.$PANE_PM" Escape
+sleep 0.3
+tmux send-keys -t "$SESSION:1.$PANE_PM" -l "$PM_MSG"
+sleep 0.1
+tmux send-keys -t "$SESSION:1.$PANE_PM" Enter
+
+echo "ANDON raised: $REASON (by $BY)"

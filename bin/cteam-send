@@ -1,0 +1,38 @@
+#!/bin/bash
+# cteam-send <target> <message>
+#
+# Usage (3-pane: 1=PM, 2=Slot1, 3=Slot2):
+#   cteam-send "$SESSION:1.2" "{IssueURL}\nworktree: ../proj-w1"
+#   cteam-send "$SESSION:1.3" "{IssueURL}\nworktree: ../proj-w2"
+#
+# All panes run on opus; model switching has been removed.
+
+set -e
+
+TARGET="$1"
+shift
+TEXT="$*"
+
+if [ -z "$TARGET" ] || [ -z "$TEXT" ]; then
+  echo "Usage: cteam-send <target> <message>" >&2
+  exit 1
+fi
+
+# Send the message
+tmux send-keys -t "$TARGET" -l "$TEXT"
+sleep 0.3
+tmux send-keys -t "$TARGET" Enter
+
+# Verify submission: if the text is still sitting unsubmitted in the input box
+# (send-keys/Enter race while the pane is busy), press Enter again.
+# False positives (submitted text echoed in the transcript) only cost a stray
+# Enter on an empty prompt, which is a no-op.
+SNIPPET=$(printf '%s' "$TEXT" | head -c 40)
+for _ in 1 2; do
+  sleep 0.7
+  if tmux capture-pane -p -t "$TARGET" | tail -6 | grep -qF -- "$SNIPPET"; then
+    tmux send-keys -t "$TARGET" Enter
+  else
+    break
+  fi
+done

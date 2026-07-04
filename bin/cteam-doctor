@@ -1,0 +1,146 @@
+#!/bin/bash
+# cteam-doctor [owner/repo] — dependency & wiring check for cteam. Read-only.
+#
+# Checks (installs NOTHING; interactive setup gets guidance instead):
+#   1. CLI dependencies (tmux, gh, claude, node, python3) + gh auth
+#   2. Claude Code plugins required by the protocol
+#   3. cteam wiring: skills, agents, roles, PATH, CLAUDE.md pointer
+#   4. Vault structure
+#   5. Optional: lint-hook lib, target repo label scheme
+#
+# Exit: 0 all required checks pass, 1 otherwise.
+
+SELF="$0"
+while [ -L "$SELF" ]; do SELF="$(readlink "$SELF")"; done
+CTEAM_HOME="$(cd "$(dirname "$SELF")/.." && pwd)"
+
+TARGET_REPO="${1:-}"
+FAIL=0
+
+ok()   { printf ' \033[32m✓\033[0m %s\n' "$1"; }
+bad()  { printf ' \033[31m✗\033[0m %s\n' "$1"; FAIL=1; }
+warn() { printf ' \033[33m⚠\033[0m %s\n' "$1"; }
+
+SETTINGS="$HOME/.claude/settings.json"
+
+echo "cteam-doctor — $CTEAM_HOME"
+echo
+echo "── CLI dependencies ─────────────────────────────"
+for cmd in tmux gh claude node python3; do
+  if command -v "$cmd" >/dev/null 2>&1; then
+    ok "$cmd ($(command -v "$cmd"))"
+  else
+    bad "$cmd not found"
+  fi
+done
+
+if command -v gh >/dev/null 2>&1; then
+  if gh auth status >/dev/null 2>&1; then
+    ok "gh authenticated"
+  else
+    bad "gh not authenticated — run: gh auth login"
+  fi
+fi
+
+echo
+echo "── Claude Code plugins (enabledPlugins) ─────────"
+if [ -f "$SETTINGS" ] && command -v python3 >/dev/null 2>&1; then
+  for plugin in context7@claude-plugins-official figma@claude-plugins-official \
+                superpowers@claude-plugins-official typescript-lsp@claude-plugins-official \
+                swift-lsp@claude-plugins-official; do
+    state=$(python3 -c "
+import json,sys
+try:
+    d = json.load(open('$SETTINGS'))
+    print(d.get('enabledPlugins', {}).get('$plugin', False))
+except Exception:
+    print('parse-error')
+")
+    case "$state" in
+      True)  ok "$plugin" ;;
+      parse-error) bad "could not parse $SETTINGS" ; break ;;
+      *)     bad "$plugin not enabled — run /plugin in Claude Code (interactive; not auto-installed)" ;;
+    esac
+  done
+else
+  bad "$SETTINGS missing or python3 unavailable"
+fi
+warn "Figma MCP OAuth cannot be checked from the shell — verify in a Claude session: ask it to call mcp__figma__whoami (re-auth via /mcp if it fails)"
+
+echo
+echo "── cteam wiring ─────────────────────────────────"
+SKILLS="andon bug-spike cteam-code-review create-issue pre-pr typescript-safety ui-implement figma-preflight figma-create figma-review fable-style"
+missing=0
+for s in $SKILLS; do
+  if [ -e "$HOME/.claude/skills/$s/SKILL.md" ]; then :; else missing=$((missing+1)); bad "skill not installed: $s"; fi
+done
+[ "$missing" -eq 0 ] && ok "11 cteam skills present in ~/.claude/skills/"
+
+for a in code-reviewer typescript-reviewer security-reviewer; do
+  if [ -e "$HOME/.claude/agents/$a.md" ]; then
+    ok "agent: $a"
+  else
+    bad "agent missing: ~/.claude/agents/$a.md"
+  fi
+done
+
+for r in shared pm slot design; do
+  [ -f "$CTEAM_HOME/roles/$r.md" ] && ok "roles/$r.md" || bad "roles/$r.md missing from repo"
+done
+
+if grep -q "roles/shared.md" "$HOME/.claude/CLAUDE.md" 2>/dev/null; then
+  if grep -q "config/tmux/cteam" "$HOME/.claude/CLAUDE.md" 2>/dev/null; then
+    bad "~/.claude/CLAUDE.md still points at the legacy ~/.config/tmux/cteam path — re-run install.sh"
+  else
+    ok "~/.claude/CLAUDE.md cteam pointer"
+  fi
+else
+  bad "~/.claude/CLAUDE.md has no cteam pointer — re-run install.sh"
+fi
+
+if command -v cteam-send >/dev/null 2>&1 && [ "$(command -v cteam-send)" = "$CTEAM_HOME/bin/cteam-send" ]; then
+  ok "bin on PATH ($CTEAM_HOME/bin)"
+else
+  warn "cteam bin not first on PATH in this shell (panes get it injected; for your shell, source ~/.zshrc)"
+fi
+
+echo
+echo "── Vault ────────────────────────────────────────"
+[ -d "$HOME/vault" ]      && ok "~/vault"      || bad "~/vault missing"
+[ -d "$HOME/vault/Work" ] && ok "~/vault/Work" || warn "~/vault/Work missing (created per-project by cteam / cteam-init)"
+
+echo
+echo "── Optional ─────────────────────────────────────"
+if [ -f "$HOME/.claude/scripts/hooks/run-with-flags.js" ]; then
+  ok "lint-hook lib (~/.claude/scripts) present — stop:format-typecheck hooks functional"
+else
+  warn "lint-hook lib (~/.claude/scripts) absent — the two lint hooks in settings-fragment.json will be skipped by install.sh"
+fi
+
+if [ -n "$TARGET_REPO" ] || git -C . rev-parse --git-dir >/dev/null 2>&1; then
+  REPO_ARGS=()
+  [ -n "$TARGET_REPO" ] && REPO_ARGS=(--repo "$TARGET_REPO")
+  if labels=$(gh label list "${REPO_ARGS[@]}" --limit 200 --json name --jq '.[].name' 2>/dev/null); then
+    need=0
+    for l in priority:high domain:ui type:bug status:todo size:m; do
+      echo "$labels" | grep -qx "$l" || need=$((need+1))
+    done
+    if [ "$need" -eq 0 ]; then
+      ok "label scheme present (${TARGET_REPO:-current repo})"
+    else
+      warn "label scheme incomplete (${TARGET_REPO:-current repo}) — run: cteam-init <project> to create it"
+    fi
+  else
+    warn "could not list labels (no repo context or no access) — pass owner/repo: cteam-doctor owner/repo"
+  fi
+else
+  warn "not in a git repo and no owner/repo argument — label check skipped"
+fi
+
+echo
+if [ "$FAIL" -eq 0 ]; then
+  echo "All required checks passed."
+else
+  echo "Some required checks FAILED — see ✗ above."
+fi
+exit "$FAIL"

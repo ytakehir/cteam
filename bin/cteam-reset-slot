@@ -1,0 +1,39 @@
+#!/bin/bash
+# cteam-reset-slot <session> <slot1|slot2> — kill-and-replace a slot's context.
+# Run by PM between issues so a slot never carries an old issue's context into a
+# new one (the worktree-playbook "short, scoped, replaced — not extended" rule).
+# Clears the conversation in-place (same pane/process) and re-establishes the role.
+#
+# Usage:  cteam-reset-slot "$SESSION" slot1
+
+set -e
+
+SESSION="$1"
+SLOT="$2"
+
+case "$SLOT" in
+  slot1) PANE=2 ;;
+  slot2) PANE=3 ;;
+  *) echo "Usage: cteam-reset-slot <session> <slot1|slot2>" >&2; exit 1 ;;
+esac
+
+# Repo root: inherit from the pane env, fall back to script location.
+if [ -z "$CTEAM_HOME" ]; then
+  SELF="$0"
+  while [ -L "$SELF" ]; do SELF="$(readlink "$SELF")"; done
+  CTEAM_HOME="$(cd "$(dirname "$SELF")/.." && pwd)"
+fi
+
+N="${SLOT#slot}"
+TARGET="$SESSION:1.$PANE"
+
+# Fresh context, same pane
+tmux send-keys -t "$TARGET" -l "/clear"
+sleep 0.3
+tmux send-keys -t "$TARGET" Enter
+sleep 1
+
+# Re-establish role so the slot waits cleanly for the next dispatch
+tmux send-keys -t "$TARGET" -l "You are Slot $N (fresh context for a new issue). Read $CTEAM_HOME/roles/shared.md and $CTEAM_HOME/roles/slot.md for protocol, then wait for PM dispatch (Issue URL + worktree). Do not act until dispatched."
+sleep 0.3
+tmux send-keys -t "$TARGET" Enter

@@ -1,0 +1,105 @@
+#!/bin/bash
+# cteam-init <project> [--repo owner/name] [--dir path]
+#
+# One-time project initialization for cteam:
+#   1. GitHub labels (priority / domain / type / status / size — see roles/shared.md)
+#   2. Vault skeleton  ~/vault/Work/<project>/{logs,decisions,architecture,notes,Raw}
+#   3. Worktrees       ../<project>-w1 and ../<project>-w2 off develop (if in a git repo)
+#
+# Idempotent: labels are upserted (--force), mkdir -p, existing worktrees kept.
+
+set -e
+
+PROJECT=""
+TARGET_REPO=""
+PROJ_DIR=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --repo) TARGET_REPO="$2"; shift 2 ;;
+    --dir)  PROJ_DIR="$2";    shift 2 ;;
+    -*) echo "Usage: cteam-init <project> [--repo owner/name] [--dir path]" >&2; exit 1 ;;
+    *)  PROJECT="$1"; shift ;;
+  esac
+done
+
+[ -n "$PROJECT" ] || { echo "Usage: cteam-init <project> [--repo owner/name] [--dir path]" >&2; exit 1; }
+PROJ_DIR="${PROJ_DIR:-$(pwd)}"
+
+echo "cteam-init: $PROJECT"
+echo "Dir:  $PROJ_DIR"
+
+# ── 1. GitHub labels ──────────────────────────────────────────
+# Scheme from roles/shared.md. `--force` makes creation an upsert.
+REPO_ARGS=()
+[ -n "$TARGET_REPO" ] && REPO_ARGS=(--repo "$TARGET_REPO")
+
+make_label() { # name color description
+  gh label create "$1" "${REPO_ARGS[@]}" --color "$2" --description "$3" --force >/dev/null \
+    && echo "  label: $1" \
+    || echo "  label FAILED: $1" >&2
+}
+
+if gh label list "${REPO_ARGS[@]}" --limit 1 >/dev/null 2>&1; then
+  echo "Labels (${TARGET_REPO:-current repo}):"
+  make_label "priority:high"   "d73a4a" "Do first"
+  make_label "priority:medium" "fbca04" "Normal queue"
+  make_label "priority:low"    "0e8a16" "When idle"
+
+  make_label "domain:frontend" "1d76db" "Frontend"
+  make_label "domain:backend"  "0052cc" "Backend"
+  make_label "domain:infra"    "5319e7" "Infrastructure"
+  make_label "domain:db"       "006b75" "Database"
+  make_label "domain:auth"     "b60205" "Auth"
+  make_label "domain:ui"       "c5def5" "UI — needs Figma node-id + design review"
+
+  make_label "type:feature"     "a2eeef" "New capability"
+  make_label "type:bug"         "d73a4a" "Defect — bug-spike required"
+  make_label "type:refactor"    "cfd3d7" "No behavior change"
+  make_label "type:test"        "bfdadc" "Test work"
+  make_label "type:docs"        "0075ca" "Documentation"
+  make_label "type:performance" "fef2c0" "Performance"
+  make_label "type:research"    "d4c5f9" "Research / spike — may close no-pr"
+
+  make_label "status:todo"           "ededed" "Ready for dispatch"
+  make_label "status:in-progress"    "fbca04" "Slot working"
+  make_label "status:review-waiting" "f9d0c4" "PR open, code review pending"
+  make_label "status:design-review"  "c5def5" "Design-review subagent running"
+  make_label "status:done"           "0e8a16" "Merged / closed"
+  make_label "status:blocked"        "b60205" "Blocked — see Issue comments"
+
+  make_label "size:s" "c2e0c6" "< half a day"
+  make_label "size:m" "fef2c0" "About a day"
+  make_label "size:l" "f9d0c4" "Multi-day — consider splitting"
+else
+  echo "SKIP labels: no repo context (run inside the project repo or pass --repo owner/name)" >&2
+fi
+
+# ── 2. Vault skeleton ─────────────────────────────────────────
+VAULT="${CTEAM_VAULT_ROOT:-$HOME/vault}"
+mkdir -p "$VAULT/Work/$PROJECT"/{logs,decisions,architecture,notes,Raw}
+echo "Vault: $VAULT/Work/$PROJECT"
+
+# ── 3. Worktrees (only when run inside the project git repo) ──
+if git -C "$PROJ_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+  if git -C "$PROJ_DIR" show-ref --verify --quiet refs/heads/develop \
+     || git -C "$PROJ_DIR" show-ref --verify --quiet refs/remotes/origin/develop; then
+    PARENT="$(dirname "$PROJ_DIR")"
+    for N in 1 2; do
+      WT="$PARENT/$PROJECT-w$N"
+      if [ -d "$WT" ]; then
+        echo "Worktree exists: $WT"
+      else
+        git -C "$PROJ_DIR" worktree add "$WT" develop \
+          && echo "Worktree added: $WT" \
+          || echo "Worktree FAILED: $WT (create manually: git worktree add $WT develop)" >&2
+      fi
+    done
+  else
+    echo "SKIP worktrees: no 'develop' branch — create it first (branch strategy requires it)" >&2
+  fi
+else
+  echo "SKIP worktrees: $PROJ_DIR is not a git repo" >&2
+fi
+
+echo "Done. Next: cteam $PROJECT (launch) · cteam-doctor ${TARGET_REPO:-} (verify)"
