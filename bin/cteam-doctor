@@ -104,6 +104,13 @@ else
   warn "cteam bin not first on PATH in this shell (panes get it injected; for your shell, source ~/.zshrc)"
 fi
 
+if grep -q "cteam_cron" "$HOME/.config/tmux/tmux.conf" 2>/dev/null \
+   || grep -q "cteam_cron" "$HOME/.tmux.conf" 2>/dev/null; then
+  ok "tmux session-closed cron-kill hook"
+else
+  warn "tmux conf lacks the session-closed cron-kill hook — re-run install.sh (cteam-end still kills cron; this is the safety net)"
+fi
+
 echo
 echo "── Vault / Obsidian workflow ────────────────────"
 [ -d "$HOME/vault" ]      && ok "~/vault"      || bad "~/vault missing"

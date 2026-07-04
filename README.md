@@ -37,7 +37,9 @@ git clone git@github.com:ytakehir/cteam.git ~/work/cteam
 ~/work/cteam/install.sh
 ```
 
-Idempotent. It symlinks skills/agents/commands/rules into `~/.claude/`, adds a PATH block to `~/.zshrc`, points the cteam section of `~/.claude/CLAUDE.md` at this repo, merges `settings-fragment.json` into `~/.claude/settings.json` (plugins always; the two lint hooks only if the ECC-derived `~/.claude/scripts` lib exists), then runs `cteam-doctor`.
+Idempotent. It symlinks skills/agents/commands/rules into `~/.claude/`, adds a PATH block to `~/.zshrc`, adds a tmux `session-closed` hook that reaps the cron watcher, points the cteam section of `~/.claude/CLAUDE.md` at this repo, merges `settings-fragment.json` into `~/.claude/settings.json` (plugins always; the two lint hooks only if the ECC-derived `~/.claude/scripts` lib exists), then runs `cteam-doctor`.
+
+The protocol also leans on the `/goal` and `/loop` slash commands (PM dispatches slots under them) — both are Claude Code built-ins, nothing to install.
 
 **First install — verify symlinked skills load:** open a NEW Claude Code session and confirm the 11 cteam skills (andon, bug-spike, cteam-code-review, create-issue, pre-pr, typescript-safety, ui-implement, figma-preflight, figma-create, figma-review, fable-style) appear in the skills list. `~/.claude/skills/` is scanned one level deep only; if symlinks are not followed on your setup, fall back to:
 

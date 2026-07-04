@@ -148,6 +148,27 @@ else
   echo "zshrc: cteam block added"
 fi
 
+# ── 3b. tmux hook: kill cron watcher when a session closes ───
+TMUX_CONF="$HOME/.config/tmux/tmux.conf"
+if [ ! -f "$TMUX_CONF" ] && [ -f "$HOME/.tmux.conf" ]; then
+  TMUX_CONF="$HOME/.tmux.conf"
+fi
+mkdir -p "$(dirname "$TMUX_CONF")"
+touch "$TMUX_CONF"
+if grep -q "cteam_cron" "$TMUX_CONF"; then
+  echo "tmux conf: cteam cron-kill hook present ($TMUX_CONF)"
+else
+  cat >> "$TMUX_CONF" << 'EOF'
+
+# >>> cteam >>>
+# Kill the cteam cron watcher when its tmux session closes (safety net; cteam-end also kills it)
+set-hook -g session-closed "run-shell 'kill $(cat /tmp/cteam_cron_#{session_name}.pid 2>/dev/null) 2>/dev/null'"
+# <<< cteam <<<
+EOF
+  echo "tmux conf: cteam cron-kill hook added ($TMUX_CONF)"
+  tmux source-file "$TMUX_CONF" 2>/dev/null || true
+fi
+
 # ── 4. ~/.claude/CLAUDE.md pointer ────────────────────────────
 CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 if [ -f "$CLAUDE_MD" ] && grep -q "config/tmux/cteam/roles" "$CLAUDE_MD"; then
