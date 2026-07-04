@@ -26,7 +26,7 @@ SETTINGS="$HOME/.claude/settings.json"
 echo "cteam-doctor — $CTEAM_HOME"
 echo
 echo "── CLI dependencies ─────────────────────────────"
-for cmd in tmux gh claude node python3; do
+for cmd in git tmux gh claude node python3; do
   if command -v "$cmd" >/dev/null 2>&1; then
     ok "$cmd ($(command -v "$cmd"))"
   else
@@ -105,9 +105,38 @@ else
 fi
 
 echo
-echo "── Vault ────────────────────────────────────────"
+echo "── Vault / Obsidian workflow ────────────────────"
 [ -d "$HOME/vault" ]      && ok "~/vault"      || bad "~/vault missing"
 [ -d "$HOME/vault/Work" ] && ok "~/vault/Work" || warn "~/vault/Work missing (created per-project by cteam / cteam-init)"
+
+# Wired by install.sh (required — protocol references /save, /organize, vault rules)
+if [ -e "$HOME/.claude/rules/cteam/obsidian/vault.md" ]; then
+  ok "vault rules (~/.claude/rules/cteam/obsidian/vault.md)"
+else
+  bad "vault rules not installed — re-run install.sh"
+fi
+for c in save organize; do
+  if [ -e "$HOME/.claude/commands/$c.md" ]; then
+    ok "/$c command"
+  else
+    bad "/$c command missing — re-run install.sh"
+  fi
+done
+
+# Optional: Obsidian app/CLI + skills (vault writes are plain files and work without these)
+command -v obsidian >/dev/null 2>&1 \
+  && ok "obsidian CLI" \
+  || warn "obsidian CLI not found — obsidian-cli skill unusable (vault file writes still work)"
+[ -d "/Applications/Obsidian.app" ] \
+  && ok "Obsidian.app" \
+  || warn "Obsidian.app not installed — brew install --cask obsidian"
+for s in obsidian-cli obsidian-markdown obsidian-bases; do
+  if [ -e "$HOME/.claude/skills/$s/SKILL.md" ]; then
+    ok "skill: $s"
+  else
+    warn "skill $s missing — install from the kepano/obsidian-skills marketplace (/plugin)"
+  fi
+done
 
 echo
 echo "── Optional ─────────────────────────────────────"

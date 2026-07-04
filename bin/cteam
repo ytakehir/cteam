@@ -60,6 +60,26 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
   exit 0
 fi
 
+# ── First run for this project → auto init + doctor ──────────
+SESSIONS_DIR="$HOME/.cteam_sessions"
+PROJECT_FILE="$SESSIONS_DIR/$PROJECT.toml"
+if [ ! -f "$PROJECT_FILE" ]; then
+  echo
+  echo "First run for '$PROJECT' — running cteam-init + cteam-doctor..."
+  (cd "$DIR" && "$CTEAM_HOME/bin/cteam-init" "$PROJECT")
+  echo
+  if ! (cd "$DIR" && "$CTEAM_HOME/bin/cteam-doctor"); then
+    if [ "${CTEAM_SKIP_DOCTOR:-0}" = "1" ]; then
+      echo "CTEAM_SKIP_DOCTOR=1 — launching despite failed checks."
+    else
+      echo
+      echo "Launch aborted: fix the ✗ items above, then re-run."
+      echo "(Override once with: CTEAM_SKIP_DOCTOR=1 cteam $PROJECT)"
+      exit 1
+    fi
+  fi
+fi
+
 # ── Create tmux session + 3-pane layout (equal vertical columns)
 # Pane assignment:  1 = PM (lead)  |  2 = Slot1  |  3 = Slot2
 tmux new-session -d -s "$SESSION" -c "$DIR" -x "$(tput cols)" -y "$(tput lines)"
@@ -78,9 +98,7 @@ echo "$CRON_PID" > "/tmp/cteam_cron_$SESSION.pid"
 echo "Cron started: PID $CRON_PID"
 
 # ── Project metadata ──────────────────────────────────────────
-SESSIONS_DIR="$HOME/.cteam_sessions"
 mkdir -p "$SESSIONS_DIR"
-PROJECT_FILE="$SESSIONS_DIR/$PROJECT.toml"
 
 PREV_SESSION=""
 if [ -f "$PROJECT_FILE" ]; then

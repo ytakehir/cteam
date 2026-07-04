@@ -89,6 +89,46 @@ for a in code-reviewer typescript-reviewer security-reviewer; do
   fi
 done
 
+# ── 2b. Commands (vault workflow: /save, /organize) ──────────
+echo "Commands → ~/.claude/commands/"
+mkdir -p "$HOME/.claude/commands"
+for c in save organize; do
+  src="$CTEAM_HOME/commands/$c.md"
+  dst="$HOME/.claude/commands/$c.md"
+  if [ "$MODE" = "link" ]; then
+    if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+      echo "  ok: /$c"
+      continue
+    fi
+    if [ -e "$dst" ] || [ -L "$dst" ]; then backup "$dst"; fi
+    ln -s "$src" "$dst"
+    echo "  linked: /$c"
+  else
+    if [ -L "$dst" ]; then rm "$dst"; elif [ -e "$dst" ]; then backup "$dst"; fi
+    cp "$src" "$dst"
+    echo "  copied: /$c"
+  fi
+done
+
+# ── 2c. Vault rules (auto-loaded every session) ───────────────
+echo "Rules → ~/.claude/rules/cteam/obsidian/"
+mkdir -p "$HOME/.claude/rules/cteam/obsidian"
+src="$CTEAM_HOME/rules/vault.md"
+dst="$HOME/.claude/rules/cteam/obsidian/vault.md"
+if [ "$MODE" = "link" ]; then
+  if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+    echo "  ok: vault.md"
+  else
+    if [ -e "$dst" ] || [ -L "$dst" ]; then backup "$dst"; fi
+    ln -s "$src" "$dst"
+    echo "  linked: vault.md"
+  fi
+else
+  if [ -L "$dst" ]; then rm "$dst"; elif [ -e "$dst" ]; then backup "$dst"; fi
+  cp "$src" "$dst"
+  echo "  copied: vault.md"
+fi
+
 # ── 3. PATH block in ~/.zshrc ─────────────────────────────────
 ZSHRC="$HOME/.zshrc"
 touch "$ZSHRC"
