@@ -140,4 +140,5 @@ settings-fragment.json  required plugins + optional lint hooks
 | No agent-teams migration | Experimental + no desktop app support. Revisit when it graduates |
 | Obsidian skills not vendored | General-purpose (kepano marketplace), not cteam's — doctor checks presence instead |
 | PM on opus; slots on sonnet + `--advisor opus` | Cheaper writers with a senior server-side advisor (needs Claude Code ≥ 2.1.98 — doctor checks) |
+| All panes: `--chrome --effort xhigh` | Browser tooling everywhere; max reasoning effort |
 | State triple-tracking | status.toml / TODO board / GitHub labels — accepted |
