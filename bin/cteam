@@ -168,16 +168,19 @@ done
 
 # ── Start Claude in each pane ─────────────────────────────────
 start_claude() {
-  local pane=$1 role=$2 model=$3 mode=$4 prompt_file=$5
+  local pane=$1 role=$2 model=$3 mode=$4 prompt_file=$5 advisor=$6
   local cid="$role-$SESSION"
-  local cmd="cd \"$DIR\" && export CTEAM_ROLE=$role && export SESSION=\"$SESSION\" && export CTEAM_VAULT=\"$VAULT_PROJ\" && export CTEAM_HOME=\"$CTEAM_HOME\" && export PATH=\"$CTEAM_HOME/bin:\$PATH\" && claude -n \"$cid\" \"\$(cat $prompt_file)\" --model $model --enable-auto-mode --permission-mode $mode"
+  local advisor_flag=""
+  [ -n "$advisor" ] && advisor_flag=" --advisor $advisor"
+  local cmd="cd \"$DIR\" && export CTEAM_ROLE=$role && export SESSION=\"$SESSION\" && export CTEAM_VAULT=\"$VAULT_PROJ\" && export CTEAM_HOME=\"$CTEAM_HOME\" && export PATH=\"$CTEAM_HOME/bin:\$PATH\" && claude -n \"$cid\" \"\$(cat $prompt_file)\" --model $model$advisor_flag --enable-auto-mode --permission-mode $mode"
   tmux send-keys -t "$SESSION:1.$pane" "$cmd" Enter
 }
 
-# All panes on opus (trial). Revisit if usage burns too fast.
-start_claude 1 pm    opus auto "$PROMPT_DIR/pm.txt"
-start_claude 2 slot1 opus auto "$PROMPT_DIR/slot1.txt"
-start_claude 3 slot2 opus auto "$PROMPT_DIR/slot2.txt"
+# PM on opus (orchestration). Slots on sonnet with an opus server-side
+# advisor (--advisor, Claude Code >= 2.1.98) — cheaper writers, senior review.
+start_claude 1 pm    opus   auto "$PROMPT_DIR/pm.txt"
+start_claude 2 slot1 sonnet auto "$PROMPT_DIR/slot1.txt" opus
+start_claude 3 slot2 sonnet auto "$PROMPT_DIR/slot2.txt" opus
 
 tmux select-pane -t "$SESSION:1.1"
 tmux attach -t "$SESSION"

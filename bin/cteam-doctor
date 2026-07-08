@@ -42,6 +42,16 @@ if command -v gh >/dev/null 2>&1; then
   fi
 fi
 
+# --advisor (slot launch flag) needs Claude Code >= 2.1.98
+if command -v claude >/dev/null 2>&1; then
+  CC_VER=$(claude --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+  if [ -n "$CC_VER" ] && [ "$(printf '%s\n' "2.1.98" "$CC_VER" | sort -V | head -1)" = "2.1.98" ]; then
+    ok "claude $CC_VER (>= 2.1.98, --advisor supported)"
+  else
+    bad "claude ${CC_VER:-version unknown} < 2.1.98 — slot launch uses --advisor; update Claude Code"
+  fi
+fi
+
 echo
 echo "── Claude Code plugins (enabledPlugins) ─────────"
 if [ -f "$SETTINGS" ] && command -v python3 >/dev/null 2>&1; then

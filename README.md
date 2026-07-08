@@ -139,5 +139,5 @@ settings-fragment.json  required plugins + optional lint hooks
 | No plugin packaging | tmux-layer scripts can't ship in a plugin; cache copies break the edit cycle; namespacing breaks skill cross-refs. Add `marketplace.json` later if it ever goes public |
 | No agent-teams migration | Experimental + no desktop app support. Revisit when it graduates |
 | Obsidian skills not vendored | General-purpose (kepano marketplace), not cteam's — doctor checks presence instead |
-| All panes on opus | Fable-period trial |
+| PM on opus; slots on sonnet + `--advisor opus` | Cheaper writers with a senior server-side advisor (needs Claude Code ≥ 2.1.98 — doctor checks) |
 | State triple-tracking | status.toml / TODO board / GitHub labels — accepted |
