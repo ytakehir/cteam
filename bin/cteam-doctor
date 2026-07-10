@@ -78,6 +78,77 @@ fi
 warn "Figma MCP OAuth cannot be checked from the shell — verify in a Claude session: ask it to call mcp__figma__whoami (re-auth via /mcp if it fails)"
 
 echo
+echo "── Settings policy ──────────────────────────────"
+# Sentinel checks over the MERGED view (settings.json + settings.local.json —
+# rules may legitimately live in either).
+if command -v python3 >/dev/null 2>&1; then
+  POLICY=$(python3 - <<'PYEOF'
+import json, os
+home = os.path.expanduser('~')
+merged = {'allow': set(), 'deny': set()}
+scalars = {}
+mkts = {}
+for name in ('settings.json', 'settings.local.json'):
+    path = f'{home}/.claude/{name}'
+    if not os.path.exists(path):
+        continue
+    try:
+        d = json.load(open(path))
+    except Exception:
+        print(f'PARSE_ERROR {name}')
+        continue
+    for kind in ('allow', 'deny'):
+        merged[kind] |= set(d.get('permissions', {}).get(kind, []))
+    for k in ('skipAutoPermissionPrompt', 'autoCompactEnabled', 'includeCoAuthoredBy'):
+        if k in d:
+            scalars.setdefault(k, d[k])
+    mkts.update(d.get('extraKnownMarketplaces', {}))
+
+def flag(cond, name): print(('OK ' if cond else 'NG ') + name)
+flag('Bash(cteam-send *)' in merged['allow'], 'allow:cteam-bins')
+flag('Write(~/.claude/**)' in merged['deny'], 'deny:claude-config')
+flag('Bash(git reset --hard *)' in merged['deny'], 'deny:git-hard-reset')
+flag(scalars.get('skipAutoPermissionPrompt') is True, 'skipAutoPermissionPrompt')
+flag(scalars.get('autoCompactEnabled') is True, 'warn:autoCompactEnabled')
+flag(scalars.get('includeCoAuthoredBy') is False, 'warn:includeCoAuthoredBy')
+flag('obsidian-skills' in mkts, 'warn:marketplace-obsidian')
+stale = [r for r in merged['allow'] | merged['deny'] if 'claude_ai_Figma' in r]
+flag(not stale, 'warn:stale-figma-rules')
+PYEOF
+)
+  while IFS= read -r line; do
+    name="${line#* }"
+    case "$line" in
+      OK\ warn:*) ok "${name#warn:}" ;;
+      NG\ warn:autoCompactEnabled)   warn "autoCompactEnabled not true — long PM sessions will hit hard context limits" ;;
+      NG\ warn:includeCoAuthoredBy)  warn "includeCoAuthoredBy not false — commits will carry Claude attribution (docs say disabled)" ;;
+      NG\ warn:marketplace-obsidian) warn "obsidian-skills marketplace not registered — obsidian skills can't be (re)installed" ;;
+      NG\ warn:stale-figma-rules)    warn "stale mcp__claude_ai_Figma__* rules present — server renamed to figma; clean them" ;;
+      OK\ allow:cteam-bins)          ok "permissions: cteam bin allows" ;;
+      NG\ allow:cteam-bins)          bad "permissions: cteam bin allows missing — re-run install.sh (panes will prompt on every cteam-send)" ;;
+      OK\ deny:claude-config)        ok "permissions: ~/.claude write-deny" ;;
+      NG\ deny:claude-config)        bad "permissions: Write(~/.claude/**) deny missing — re-run install.sh" ;;
+      OK\ deny:git-hard-reset)       ok "permissions: git reset --hard deny" ;;
+      NG\ deny:git-hard-reset)       bad "permissions: Bash(git reset --hard *) deny missing — re-run install.sh" ;;
+      OK\ skipAutoPermissionPrompt)  ok "skipAutoPermissionPrompt: true" ;;
+      NG\ skipAutoPermissionPrompt)  bad "skipAutoPermissionPrompt not true — every pane stalls on the auto-mode prompt; re-run install.sh" ;;
+      PARSE_ERROR*)                  bad "cannot parse ${line#PARSE_ERROR }" ;;
+    esac
+  done <<< "$POLICY"
+else
+  warn "python3 unavailable — settings policy checks skipped"
+fi
+
+# Per-project Claude settings are against the centralize-at-user-level policy
+PJ_SETTINGS=$(find "$HOME/work" -maxdepth 3 -path "*/.claude/settings*.json" 2>/dev/null | grep -v "^$HOME/work/cteam/" || true)
+if [ -n "$PJ_SETTINGS" ]; then
+  warn "per-project Claude settings found (policy: centralize at user level — absorb useful rules, then delete):"
+  echo "$PJ_SETTINGS" | sed 's/^/     /'
+else
+  ok "no per-project Claude settings under ~/work"
+fi
+
+echo
 echo "── cteam wiring ─────────────────────────────────"
 SKILLS="andon bug-spike cteam-code-review create-issue pre-pr typescript-safety ui-implement figma-preflight figma-create figma-review fable-style"
 missing=0

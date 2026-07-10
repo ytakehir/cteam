@@ -88,9 +88,23 @@ First launch of a project runs `cteam-init` + `cteam-doctor` automatically. Doct
 Notes:
 
 - Anything replaced is backed up to `~/.claude/backups/cteam-install-<timestamp>/`.
-- Settings merge: plugins always; the two lint hooks only if the ECC-derived `~/.claude/scripts` lib exists.
 - `--copy` copies instead of symlinking (only needed if your setup doesn't scan symlinked skills — verified working on macOS). Copy mode requires re-running install.sh after every skill edit.
 - `--retire` moves the legacy `~/.config/tmux/cteam` assets + old zshrc lines to a backup. Run only after the verify step.
+
+### Settings sharing (settings-fragment.json)
+
+All Claude Code configuration is **centralized at user level** — projects must NOT carry their own `.claude/settings*.json` (doctor warns if any appear under `~/work`). The fragment is merged into `~/.claude/settings.json` by install.sh:
+
+| Fragment content | Merge behavior |
+|---|---|
+| `permissions.allow` (~230) / `permissions.deny` (53) | Union — adds missing rules, never removes machine-local ones |
+| `enabledPlugins` (5) | Forced true |
+| `extraKnownMarketplaces` (obsidian-skills) | Added if missing |
+| `skipAutoPermissionPrompt: true` | **Enforced** — panes stall on the auto-mode prompt without it |
+| `autoCompactEnabled`, `includeCoAuthoredBy` | Set only if absent (existing value respected; doctor warns on drift) |
+| lint hooks ×2 | Added by id, only if the `~/.claude/scripts` lib exists |
+
+The deny set is deliberately broad (recursive rm variants, `git reset --hard`, `git push -f`, `~/.claude` + `~/.ssh` + `.env` protection, keychain probes, publish/delete commands) and applies to ALL sessions, not just cteam. `~/.claude/settings.local.json` stays machine-personal (auto-accumulated "always allow" clicks land there).
 
 ### Manual steps (install.sh can't do these)
 

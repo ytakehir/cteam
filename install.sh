@@ -205,6 +205,34 @@ for p in frag.get('enabledPlugins', {}):
         changed.append(f'plugin {p}')
 settings = {**settings, 'enabledPlugins': plugins}
 
+# permissions: union merge — adds fragment rules, never removes machine-local ones
+perms = {k: list(v) for k, v in settings.get('permissions', {}).items()}
+for kind in ('allow', 'deny'):
+    have = set(perms.get(kind, []))
+    add = [r for r in frag.get('permissions', {}).get(kind, []) if r not in have]
+    if add:
+        perms[kind] = perms.get(kind, []) + add
+        changed.append(f'{len(add)} {kind} rules')
+settings = {**settings, 'permissions': perms}
+
+# marketplaces: add if missing
+mkts = dict(settings.get('extraKnownMarketplaces', {}))
+for name, spec in frag.get('extraKnownMarketplaces', {}).items():
+    if name not in mkts:
+        mkts[name] = spec
+        changed.append(f'marketplace {name}')
+settings = {**settings, 'extraKnownMarketplaces': mkts}
+
+# scalars: skipAutoPermissionPrompt is a cteam launch requirement (panes stall
+# on the auto-mode prompt without it) — enforce. The rest are set-if-absent.
+if settings.get('skipAutoPermissionPrompt') is not True:
+    settings['skipAutoPermissionPrompt'] = True
+    changed.append('skipAutoPermissionPrompt=true (enforced)')
+for key in ('autoCompactEnabled', 'includeCoAuthoredBy'):
+    if key in frag and key not in settings:
+        settings[key] = frag[key]
+        changed.append(f'{key}={frag[key]}')
+
 # Lint hooks depend on the ECC-derived ~/.claude/scripts lib — skip if absent.
 if os.path.exists(os.path.expanduser('~/.claude/scripts/hooks/run-with-flags.js')):
     hooks = {k: list(v) for k, v in settings.get('hooks', {}).items()}
