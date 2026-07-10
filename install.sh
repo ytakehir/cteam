@@ -49,7 +49,7 @@ echo "cteam install — $CTEAM_HOME (mode: $MODE)"
 # ── 1. Skills ─────────────────────────────────────────────────
 echo "Skills → ~/.claude/skills/"
 mkdir -p "$HOME/.claude/skills"
-SKILLS="andon bug-spike cteam-code-review create-issue pre-pr typescript-safety ui-implement figma-preflight figma-create figma-review fable-style"
+SKILLS="andon bug-spike cteam-code-review create-issue pre-pr typescript-safety ui-implement figma-preflight figma-create figma-review fable-style grill-me"
 for s in $SKILLS; do
   src="$CTEAM_HOME/skills/$s"
   dst="$HOME/.claude/skills/$s"
@@ -279,7 +279,7 @@ echo
 
 echo
 echo "NEXT (manual, cannot be automated):"
-echo "  - Open a NEW Claude Code session and confirm the 11 cteam skills are listed"
+echo "  - Open a NEW Claude Code session and confirm the 12 cteam skills are listed"
 echo "    (first install only: this validates symlinked skills; if missing, re-run: install.sh --copy)"
 echo "  - Verify Figma MCP auth inside Claude (mcp__figma__whoami; /mcp to re-auth)"
 echo "  - source ~/.zshrc (or open a new shell) to pick up PATH"

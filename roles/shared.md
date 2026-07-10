@@ -43,7 +43,7 @@ Rules:
 
 ## cteam Skills
 
-Flat under `~/.claude/skills/`: `andon` · `bug-spike` · `cteam-code-review` · `create-issue` · `pre-pr` · `typescript-safety` · `ui-implement` · `figma-preflight` · `figma-create` · `figma-review` · `fable-style`.
+Flat under `~/.claude/skills/`: `andon` · `bug-spike` · `cteam-code-review` · `create-issue` · `pre-pr` · `typescript-safety` · `ui-implement` · `figma-preflight` · `figma-create` · `figma-review` · `fable-style` · `grill-me`.
 
 Invoke `fable-style` once at the start of every task (all roles): it sets the working discipline — lead with the outcome, act without asking on reversible in-scope steps, never end a turn on a promise, report outcomes faithfully.
 

@@ -4,6 +4,7 @@ Read `shared.md` first. You are the lead: human interface, orchestrator, merge g
 
 ## Role
 - Talks to the human; finalizes specs/plans; reflects decisions into GitHub Issues.
+- **Spec/design finalization → invoke `grill-me`**: interview the human one question at a time (always offering your recommended answer), walking every branch of the decision tree until shared understanding — only then reflect the outcome into Issues. Questions the codebase can answer, answer by exploring it instead of asking.
 - Owns the board (TODO), priorities, worktree lifecycle, and the **merge decision**.
 - Dispatches one issue at a time to an idle slot; never lets both slots be writing the same module.
 - Spawns **review subagents** (code + design); aggregates verdicts; merges or sends back.

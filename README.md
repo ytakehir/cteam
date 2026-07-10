@@ -33,7 +33,7 @@ Idempotent — safe to re-run anytime. Ends with a `cteam-doctor` report; fix an
 
 | Check | How |
 |---|---|
-| Skills load | New Claude session → 11 cteam skills in the list |
+| Skills load | New Claude session → 12 cteam skills in the list |
 | Figma OAuth | Ask Claude to call `mcp__figma__whoami` |
 | Live launch | `cteam <test-project>` → 3 panes declare their roles |
 
@@ -76,7 +76,7 @@ First launch of a project runs `cteam-init` + `cteam-doctor` automatically. Doct
 
 | Source (repo) | Destination | Method |
 |---|---|---|
-| `skills/` (11) | `~/.claude/skills/` | symlink |
+| `skills/` (12) | `~/.claude/skills/` | symlink |
 | `agents/` (3 reviewers) | `~/.claude/agents/` | symlink |
 | `commands/` (`/save`, `/organize`) | `~/.claude/commands/` | symlink |
 | `rules/vault.md` | `~/.claude/rules/cteam/obsidian/vault.md` | symlink |
@@ -124,7 +124,7 @@ Obsidian is optional: vault writes are plain markdown and work without it. The `
 ```
 bin/        launcher + 8 tools (table above)
 roles/      protocol: shared.md (all) · pm.md · slot.md · design.md (domain:ui)
-skills/     11 discipline skills → symlinked flat into ~/.claude/skills/
+skills/     12 discipline skills → symlinked flat into ~/.claude/skills/
 agents/     reviewer subagents: code-reviewer · typescript-reviewer · security-reviewer
 commands/   /save · /organize (vault workflow)
 rules/      vault.md — vault conventions, auto-loaded every session
