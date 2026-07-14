@@ -34,6 +34,7 @@ Open a TODO (TaskCreate/TodoWrite) at task start. The list MUST include, as expl
 ## Slot Must Rules
 - 1 issue at a time; always in your worktree; fresh session per issue.
 - Never implement out-of-scope (invoke `create-issue`). Never switch branches without PM.
+- **Code that needs a comment to be understood is code that needs rewriting.** If you find yourself explaining *what* the code does or *why* it is correct in a comment, the naming, structure, or decomposition is wrong — fix the code instead. A comment is only for a constraint the code itself cannot express (an external contract, a non-obvious invariant, a workaround with its reason). Explanatory comments on your own logic are a defect, not documentation.
 - Run `pre-pr` self-review before opening the PR; for `domain:ui` attach the screenshot pair.
 - Update `status.toml` then report to PM on completion/blocked.
 - `domain:ui`: undefined Figma element → BLOCKED to PM, do not self-invent. Copy verbatim; icons from exports.
