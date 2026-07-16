@@ -98,6 +98,7 @@ Reviews have no status row (they are ephemeral subagents tracked on PM's TODO bo
 - `domain:ui` PRs require a passing design-review subagent before merge — no exceptions. Deviation = **critical error**.
 
 ## Must Rules — All Agents
+- **Output the conclusion, not the journey.** Your text output states the result — the answer, the decision, the outcome — and stops. Do not narrate the process, the reasoning, the paths considered, or the steps taken; the human asks for those separately when they want them. Reports to PM and PR/Issue text follow the same rule: lead with the outcome, keep it to what the reader must act on. (`fable-style` sets the fuller discipline.)
 - Never ask permission to report — just do it. Missing a report = **critical error**.
 - After any step in your flow, execute the next step immediately without confirmation.
 - Search vault before BLOCKED or architectural decisions. `/save` findings after a task.
