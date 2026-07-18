@@ -1,5 +1,5 @@
 #!/bin/bash
-# cteam-reset-slot <session> <slot1|slot2> — kill-and-replace a slot's context.
+# cteam-reset-slot <session> <slot1|slot2|slot3> — kill-and-replace a slot's context.
 # Run by PM between issues so a slot never carries an old issue's context into a
 # new one (the worktree-playbook "short, scoped, replaced — not extended" rule).
 # Clears the conversation in-place (same pane/process) and re-establishes the role.
@@ -14,7 +14,8 @@ SLOT="$2"
 case "$SLOT" in
   slot1) PANE=2 ;;
   slot2) PANE=3 ;;
-  *) echo "Usage: cteam-reset-slot <session> <slot1|slot2>" >&2; exit 1 ;;
+  slot3) PANE=4 ;;
+  *) echo "Usage: cteam-reset-slot <session> <slot1|slot2|slot3>" >&2; exit 1 ;;
 esac
 
 # Repo root: inherit from the pane env, fall back to script location.

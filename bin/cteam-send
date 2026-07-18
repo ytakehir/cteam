@@ -1,9 +1,10 @@
 #!/bin/bash
 # cteam-send <target> <message>
 #
-# Usage (3-pane: 1=PM, 2=Slot1, 3=Slot2):
+# Usage (4-pane: 1=PM, 2=Slot1, 3=Slot2, 4=Slot3):
 #   cteam-send "$SESSION:1.2" "{IssueURL}\nworktree: ../proj-w1"
 #   cteam-send "$SESSION:1.3" "{IssueURL}\nworktree: ../proj-w2"
+#   cteam-send "$SESSION:1.4" "{IssueURL}\nworktree: ../proj-w3"
 #
 # PM runs on opus; slots on sonnet with an opus advisor (set by the launcher).
 

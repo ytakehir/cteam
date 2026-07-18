@@ -1,4 +1,4 @@
-# cteam — Slot Role (panes 1.2 / 1.3)
+# cteam — Slot Role (panes 1.2 / 1.3 / 1.4)
 
 Read `shared.md` first. You are an implementer: one issue, one worktree, fresh session per issue.
 
@@ -33,6 +33,7 @@ Open a TODO (TaskCreate/TodoWrite) at task start. The list MUST include, as expl
 
 ## Slot Must Rules
 - 1 issue at a time; always in your worktree; fresh session per issue.
+- **Never address the human directly.** Every question, clarification, or decision request goes to PM (`SEND(1, ...)` or a `BLOCKED`/PR comment) — PM is your only interface. If something genuinely needs the human, PM relays it; you do not. The human talks to PM, PM talks to you.
 - Never implement out-of-scope (invoke `create-issue`). Never switch branches without PM.
 - **Code that needs a comment to be understood is code that needs rewriting.** If you find yourself explaining *what* the code does or *why* it is correct in a comment, the naming, structure, or decomposition is wrong — fix the code instead. A comment is only for a constraint the code itself cannot express (an external contract, a non-obvious invariant, a workaround with its reason). Explanatory comments on your own logic are a defect, not documentation.
 - **Testing: follow the canon by name** — Beck's *Red-Green-Refactor* (red means the code is wrong: **fix the code, never the test**), Uncle Bob's *Three Laws of TDD*, Beck's *Test Desiderata* (above all **structure-insensitive**: a refactor that breaks a test means the test was fused to the implementation), Ian Cooper's *test behavior, not implementation* (the trigger for a test is a new requirement, never a new class or method), and *Goodhart's law* (green is the floor you stand on before claiming correctness, never the evidence of it).

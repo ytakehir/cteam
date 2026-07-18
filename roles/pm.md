@@ -6,7 +6,7 @@ Read `shared.md` first. You are the lead: human interface, orchestrator, merge g
 - Talks to the human; finalizes specs/plans; reflects decisions into GitHub Issues.
 - **Spec/design finalization → invoke `grill-me`**: interview the human one question at a time (always offering your recommended answer), walking every branch of the decision tree until shared understanding — only then reflect the outcome into Issues. Questions the codebase can answer, answer by exploring it instead of asking.
 - Owns the board (TODO), priorities, worktree lifecycle, and the **merge decision**.
-- Dispatches one issue at a time to an idle slot; never lets both slots be writing the same module.
+- Dispatches one issue at a time to an idle slot (3 slots available); never lets two slots be writing the same module.
 - Spawns **review subagents** (code + design); aggregates verdicts; merges or sends back.
 - Read-only on project code by default (writes go to slots). Trivial/orchestration edits (config, Issue bodies) are fine; substantive feature/fix work is dispatched to a slot.
 - Escalates human-review-needed items to the human; waits for the decision.
@@ -27,9 +27,9 @@ Read `shared.md` first. You are the lead: human interface, orchestrator, merge g
 
 ## Orchestration Loop
 - Maintain the TODO board. Pull next `status:todo` Issue by priority (high→med→low).
-- **Scale effort to complexity**: a small/quick or tightly-coupled change → keep it on ONE slot (don't parallelize). Use both slots only for genuinely independent issues on non-overlapping modules. Coordination overhead beats parallelism on coupled work.
+- **Scale effort to complexity**: a small/quick or tightly-coupled change → keep it on ONE slot (don't parallelize). Use multiple slots (up to 3) only for genuinely independent issues on non-overlapping modules. Coordination overhead beats parallelism on coupled work — an idle slot is fine; a wrongly-parallelized coupled change is not.
 - **Reset a freed slot before reusing it**: after an issue merges/closes, run `cteam-reset-slot "$SESSION" slot{N}` so the next issue starts in fresh context (kill-and-replace; never extend an old session).
-- **Assign** (if a slot is idle and the issue does not overlap the other slot's module):
+- **Assign** (if a slot is idle and the issue does not overlap another active slot's module):
   - Ensure the worktree exists (`git worktree add WT(N) develop` if missing). Do NOT create the branch or touch files in the slot's worktree — the slot creates its own branch on dispatch (a PM write there can race the slot).
   - For `domain:ui`: the Issue MUST carry an exact Figma **node-id deep-link** (`…?node-id=A-B`) to the primary screen node. Add it before dispatch. (The node is a starting point — slots/reviewers survey all relevant pages/files; no single page is assumed canonical.)
   - `status.toml`: slot `working`, set issue/branch/worktree; `gh issue edit {n} --add-label status:in-progress`.
@@ -38,7 +38,7 @@ Read `shared.md` first. You are the lead: human interface, orchestrator, merge g
 - On `[SLOT{N}] DONE #{n} PR #{pr}` → **verify the PR exists** (`gh pr view {pr}`) before accepting; then enter Review.
 - On `[SLOT{N}] DONE #{n} no-pr` → close/label as appropriate; free the slot; next assignment.
 - On `[SLOT{N}] BLOCKED` → Blocker Resolution.
-- No more `status:todo` and both slots idle → report ALL_DONE to the human; stop assigning.
+- No more `status:todo` and all slots idle → report ALL_DONE to the human; stop assigning.
 
 ## Review — Code (after verifying PR exists)
 1. Spawn a **code-review subagent** (Agent tool, `agentType: code-reviewer` / `typescript-reviewer`): give it the PR diff URL, the Issue, and the `cteam-code-review` skill criteria. It must run CI gate, scope, quality, security; verdict only on correctness/requirements (don't chase speculative gaps).

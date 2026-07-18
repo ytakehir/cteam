@@ -28,9 +28,9 @@ if [ -z "$SESSION" ]; then
   exit 1
 fi
 
-# Pane layout: 1=PM 2=Slot1 3=Slot2
+# Pane layout: 1=PM 2=Slot1 3=Slot2 4=Slot3
 PANE_PM=1
-ALL_PANES=(2 3)
+ALL_PANES=(2 3 4)
 
 STOP_MSG="[ANDON] $REASON — raised by $BY. Stop current work immediately and wait for PM decision."
 PM_MSG="[ANDON] $REASON — raised by $BY. Human decision required."

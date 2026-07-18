@@ -1,6 +1,6 @@
 #!/bin/bash
 # cteam-cron <session> <dir> <vault_proj>
-# Background watcher (3-pane model): Raw/ accumulation → notify PM.
+# Background watcher (4-pane model): Raw/ accumulation → notify PM.
 # Worker/SM/Designer nudges are gone — PM orchestrates directly and runs its
 # own Monitor for slot pane-stalls and PR/issue state.
 # Launched by cteam, runs until tmux session dies.
@@ -12,7 +12,7 @@ VAULT_PROJ=$3
 RAW_THRESHOLD=${CTEAM_RAW_THRESHOLD:-5}
 RAW_COOLDOWN=${CTEAM_RAW_COOLDOWN:-3600}    # 1 hour
 
-# Pane layout: 1=PM 2=Slot1 3=Slot2
+# Pane layout: 1=PM 2=Slot1 3=Slot2 4=Slot3
 PANE_PM=1
 
 while true; do

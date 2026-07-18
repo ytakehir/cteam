@@ -1,16 +1,19 @@
 # cteam
 
-3-pane multi-agent dev team on tmux + Claude Code.
+4-pane multi-agent dev team on tmux + Claude Code.
 
 ```
-┌──────────┬──────────┬──────────┐
-│    PM    │  Slot1   │  Slot2   │
-│  (lead)  │ (writer) │ (writer) │
-└──────────┴──────────┴──────────┘
+┌────────────┬────────────┐
+│            │   Slot1    │
+│     PM     ├────────────┤
+│   (lead)   │   Slot2    │
+│            ├────────────┤
+│            │   Slot3    │
+└────────────┴────────────┘
 ```
 
-- **PM** talks to the human, owns Issues/TODO, dispatches work, merges.
-- **Slot1/Slot2** implement one Issue each, in isolated git worktrees.
+- **PM** talks to the human, owns Issues/TODO, dispatches work, merges (left half, full height).
+- **Slot1/Slot2/Slot3** implement one Issue each, in isolated git worktrees (right column, stacked).
 - **Reviews** (code + design) are PM-spawned subagents — never panes.
 
 The full protocol lives in [`roles/`](roles/); the discipline skills in [`skills/`](skills/).
@@ -35,7 +38,7 @@ Idempotent — safe to re-run anytime. Ends with a `cteam-doctor` report; fix an
 |---|---|
 | Skills load | New Claude session → 12 cteam skills in the list |
 | Figma OAuth | Ask Claude to call `mcp__figma__whoami` |
-| Live launch | `cteam <test-project>` → 3 panes declare their roles |
+| Live launch | `cteam <test-project>` → 4 panes declare their roles |
 
 Then retire the pre-repo assets:
 
@@ -62,7 +65,7 @@ First launch of a project runs `cteam-init` + `cteam-doctor` automatically. Doct
 | `cteam <project> [suffix] [dir]` | Launch (or re-attach). `suffix=today` → dated session |
 | `cteam-end <project> [date]` | Kill session + cron watcher |
 | `cteam-doctor [owner/repo]` | Read-only health check — installs nothing |
-| `cteam-init <project> [--repo o/r]` | Labels + vault skeleton + w1/w2 worktrees |
+| `cteam-init <project> [--repo o/r]` | Labels + vault skeleton + w1/w2/w3 worktrees |
 | `cteam-send <target> <msg>` | Pane messaging (Enter-retry safe) — the only sanctioned channel |
 | `cteam-andon --reason "..."` | Emergency stop, all panes (Escape-first) |
 | `cteam-rebase` | Slot: rebase current branch onto origin/develop |
@@ -142,7 +145,7 @@ settings-fragment.json  required plugins + optional lint hooks
 
 - **Labels** (upserted via `gh label create --force`): `priority:{high,medium,low}` · `domain:{frontend,backend,infra,db,auth,ui}` · `type:{feature,bug,refactor,test,docs,performance,research}` · `status:{todo,in-progress,review-waiting,design-review,done,blocked}` · `size:{s,m,l}`
 - **Vault**: `~/vault/Work/<project>/{logs,decisions,architecture,notes,Raw}`
-- **Worktrees**: `../<project>-w1`, `../<project>-w2` off `develop` (skipped with a notice if no develop branch yet)
+- **Worktrees**: `../<project>-w1`, `../<project>-w2`, `../<project>-w3` off `develop` (skipped with a notice if no develop branch yet)
 
 ---
 
