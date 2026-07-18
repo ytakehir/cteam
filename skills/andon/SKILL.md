@@ -1,6 +1,6 @@
 ---
 name: andon
-description: Use when a critical issue affects the entire team and all work must stop immediately — broadcasts stop command to all panes and escalates to PM for human decision
+description: Use when a critical issue affects the entire team and all work must stop immediately; broadcasts stop command to all panes and escalates to PM for human decision
 ---
 
 # Andon Code
@@ -14,7 +14,7 @@ MUST use when a critical issue affects everyone, not just yourself. Named after 
 | Only you are stuck | `BLOCKED` to PM |
 | Affects entire team or workflow | `cteam-andon` |
 
-## Triggers — raise andon when you discover:
+## Triggers: raise andon when you discover:
 - Critical bug (data corruption, security vulnerability)
 - CI/tests broken in a way that blocks all merges
 - Architecture conflict that affects both slots
@@ -29,7 +29,7 @@ MUST use when a critical issue affects everyone, not just yourself. Named after 
 ```bash
 cteam-andon --reason "brief description" --by $CTEAM_ROLE
 ```
-3. Wait — do NOT resume until PM relays human decision
+3. Wait; do NOT resume until PM relays human decision
 
 ## Examples
 ```bash
@@ -43,6 +43,6 @@ cteam-andon --reason "Figma MCP unreachable, cannot proceed with UI work" --by s
 - All agents wait for PM to relay clear
 
 ## Rules
-- **Rigid** — never skip, never self-resolve
+- **Rigid**: never skip, never self-resolve
 - Do not resume work without PM confirmation
 - Do not raise andon for issues that only affect you

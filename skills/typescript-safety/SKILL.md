@@ -1,6 +1,6 @@
 ---
 name: typescript-safety
-description: Use when writing or reviewing TypeScript/TSX code — type safety rules and banned patterns
+description: Use when writing or reviewing TypeScript/TSX code; type safety rules and banned patterns
 ---
 
 # TypeScript Safety
@@ -16,4 +16,4 @@ description: Use when writing or reviewing TypeScript/TSX code — type safety r
 - No `biome-ignore` unless: clear justification + absolutely necessary + reviewer-approved
 
 ## Rules
-- **Rigid** — no exceptions without explicit reviewer approval
+- **Rigid**: no exceptions without explicit reviewer approval

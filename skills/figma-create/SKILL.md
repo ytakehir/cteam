@@ -7,12 +7,12 @@ description: Use after /figma-preflight passes. Covers actual canvas creation an
 
 Run only after `/figma-preflight` passes. Follow with `/figma-review` when done.
 
-## Phase 1 — Create
+## Phase 1: Create
 
 ### Naming (before placing anything)
 
-- Components: slash notation — `Button/Primary`, `Card/Default`, `Input/Text`
-- Sections: unique names per page — check for duplicates first
+- Components: slash notation; `Button/Primary`, `Card/Default`, `Input/Text`
+- Sections: unique names per page; check for duplicates first
 - Nodes: no duplicate names within a section
 
 ### Token usage (mandatory for every property)
@@ -31,13 +31,13 @@ If a variable does not exist for a value: create the variable first, then apply 
 
 - Use daisyUI library instances wherever possible
 - Use existing file components for all repeated UI
-- Never duplicate a component by hand — always use an instance
+- Never duplicate a component by hand; always use an instance
 - Never use a raw frame where a component instance should be
 
 ### Auto Layout (mandatory on every parent frame)
 
 - Every frame containing children must have Auto Layout set
-- Set direction, spacing, padding, alignment explicitly — no manual positioning
+- Set direction, spacing, padding, alignment explicitly; no manual positioning
 - Nested frames must also have Auto Layout
 
 ### Variants
@@ -52,7 +52,7 @@ Use Figma component properties (variant, boolean, text, instance swap) for contr
 
 ---
 
-## Phase 2 — Post-Creation Check
+## Phase 2: Post-Creation Check
 
 Run immediately after creating or modifying. Fix before continuing.
 
@@ -69,8 +69,8 @@ Flag and fix any unbound values.
 
 ### Spacing check
 
-- Padding (top, right, bottom, left) — matches intent and uses variable
-- Gap between children — uses spacing variable
+- Padding (top, right, bottom, left); matches intent and uses variable
+- Gap between children; uses spacing variable
 - No orphaned spacing values
 
 ### Node integrity check
@@ -94,6 +94,6 @@ For the page being edited:
 ## Rules
 
 - Never place a node before `/figma-preflight` passes
-- Never hardcode any value — create the variable first if missing
-- Never recreate existing components — always use instances
+- Never hardcode any value; create the variable first if missing
+- Never recreate existing components; always use instances
 - Post-creation check must pass before calling `/figma-review`

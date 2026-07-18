@@ -1,6 +1,6 @@
 ---
 name: create-issue
-description: Use when creating a new GitHub Issue — for out-of-scope items, follow-ups, TODOs, and secondary spikes
+description: Use when creating a new GitHub Issue; for out-of-scope items, follow-ups, TODOs, and secondary spikes
 ---
 
 # Create Issue
