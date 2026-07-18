@@ -168,22 +168,22 @@ done
 
 # ── Start Claude in each pane ─────────────────────────────────
 start_claude() {
-  local pane=$1 role=$2 model=$3 mode=$4 prompt_file=$5 advisor=$6
+  local pane=$1 role=$2 model=$3 effort=$4 mode=$5 prompt_file=$6 advisor=$7
   local cid="$role-$SESSION"
   local advisor_flag=""
   [ -n "$advisor" ] && advisor_flag=" --advisor $advisor"
-  local cmd="cd \"$DIR\" && export CTEAM_ROLE=$role && export SESSION=\"$SESSION\" && export CTEAM_VAULT=\"$VAULT_PROJ\" && export CTEAM_HOME=\"$CTEAM_HOME\" && export CLAUDE_CODE_SUBAGENT_MODEL=opus && export PATH=\"$CTEAM_HOME/bin:\$PATH\" && claude -n \"$cid\" \"\$(cat $prompt_file)\" --model $model$advisor_flag --chrome --effort xhigh --enable-auto-mode --permission-mode $mode"
+  local cmd="cd \"$DIR\" && export CTEAM_ROLE=$role && export SESSION=\"$SESSION\" && export CTEAM_VAULT=\"$VAULT_PROJ\" && export CTEAM_HOME=\"$CTEAM_HOME\" && export CLAUDE_CODE_SUBAGENT_MODEL=opus && export PATH=\"$CTEAM_HOME/bin:\$PATH\" && claude -n \"$cid\" \"\$(cat $prompt_file)\" --model $model$advisor_flag --chrome --effort $effort --enable-auto-mode --permission-mode $mode"
   tmux send-keys -t "$SESSION:1.$pane" "$cmd" Enter
 }
 
-# PM on opus (orchestration). Slots on sonnet with an opus server-side
-# advisor (--advisor, Claude Code >= 2.1.98) — cheaper writers, senior review.
-# All panes: --chrome (browser tooling) + --effort xhigh (max reasoning) +
-# CLAUDE_CODE_SUBAGENT_MODEL=opus (review/research subagents run on opus even
-# from a sonnet slot).
-start_claude 1 pm    opus   auto "$PROMPT_DIR/pm.txt"
-start_claude 2 slot1 sonnet auto "$PROMPT_DIR/slot1.txt" opus
-start_claude 3 slot2 sonnet auto "$PROMPT_DIR/slot2.txt" opus
+# PM on fable + effort high (orchestration; fable is now standard). Slots on
+# sonnet + effort xhigh with an opus server-side advisor (--advisor, Claude Code
+# >= 2.1.98) — cheaper writers, senior review.
+# All panes: --chrome (browser tooling) + CLAUDE_CODE_SUBAGENT_MODEL=opus
+# (review/research subagents run on opus even from a sonnet slot).
+start_claude 1 pm    fable  high  auto "$PROMPT_DIR/pm.txt"
+start_claude 2 slot1 sonnet xhigh auto "$PROMPT_DIR/slot1.txt" opus
+start_claude 3 slot2 sonnet xhigh auto "$PROMPT_DIR/slot2.txt" opus
 
 tmux select-pane -t "$SESSION:1.1"
 tmux attach -t "$SESSION"
