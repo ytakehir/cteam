@@ -5,7 +5,7 @@ description: Use when reviewing a pull request; systematic checklist for scope, 
 
 # Code Review
 
-Run as a PM-spawned subagent in fresh context: you see the diff + the Issue + these criteria, not the implementer's reasoning. Flag only gaps affecting correctness or stated requirements; don't chase speculative gaps (over-engineering). Return your verdict (PR comment labels) to PM; do not message panes.
+Run as a PM-spawned subagent in fresh context: you see the diff + the Issue + these criteria, not the implementer's reasoning. **Review adversarially: actively try to refute the PR; a pass is earned by surviving that attempt, not assumed.** Flag only gaps affecting correctness or stated requirements; don't chase speculative gaps (over-engineering). Return your verdict (PR comment labels) to PM; do not message panes.
 
 ## Step 1: Read the Issue
 `gh issue view {n} --json title,body`; understand ALL requirements and do/don't sections before reading any code.

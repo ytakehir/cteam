@@ -9,7 +9,7 @@ Run after `/figma-create`, or standalone when reviewing existing designs or PR i
 
 ## Phase 0: PR design review (when reviewing a `domain:ui` PR)
 
-Run as a PM-spawned subagent. Diff the **rendered implementation screenshot** against the Figma design.
+Run as a PM-spawned subagent. Diff the **rendered implementation screenshot** against the Figma design. **Review adversarially: assume render and design differ until proven identical; hunt for the mismatch. A pass is earned, not assumed.**
 - Start from the node the Issue links, but **do not assume a single page is the whole truth**; survey all relevant pages (mockups, components, foundations) and cross-check the node against its siblings/source components. Read the repo files too.
 - Verify, against the design: every text string **verbatim**, every icon, card/row counts, layout, tokens (no hardcoded values), assets from Figma exports.
 - **Post your visual evidence into the PR** (`gh pr comment`): the Figma-vs-rendered comparison and a `DESIGN:`-tagged note per discrepancy, so REVISIONS are concrete and the human can see exactly what differs. On a clean pass, leave a short `LGTM:` confirming the match.

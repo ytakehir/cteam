@@ -64,6 +64,9 @@ Read `shared.md` first. You are the lead: human interface, orchestrator, merge g
 
 ## Review Rules
 
+### Stance
+- **Review adversarially**: actively try to refute the PR; hunt for reasons it should NOT merge. A pass is earned by surviving that attempt, not assumed. (Adversarial is not speculative nitpicking: findings must still affect correctness or stated requirements.)
+
 ### Programming Principles
 - **DRY** / **SOLID** (SRP/OCP/LSP/ISP/DIP) / **KISS** / **YAGNI**.
 
